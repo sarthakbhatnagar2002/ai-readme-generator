@@ -1,0 +1,29 @@
+# Advanced README Generator Dependencies (with RAG support)
+# Install with: pip install -r requirements.txt
+
+# PDF processing
+PyPDF2==3.0.1
+
+# Google Gemini AI
+google-generativeai==0.3.2
+
+# LangChain for RAG functionality
+langchain==0.1.0
+langchain-google-genai==0.0.6
+langchain-community==0.0.10
+
+# Vector store and embeddings
+faiss-cpu==1.7.4
+
+# Environment variables
+python-dotenv==1.0.0
+
+# Additional utilities
+tiktoken==0.5.2
+
+# Optional: Alternative PDF libraries (uncomment if PyPDF2 doesn't work well)
+# pdfplumber==0.10.3
+# pymupdf==1.23.14
+
+# Optional: For GPU acceleration (if you have CUDA)
+# faiss-gpu==1.7.4  # Use instead of faiss-cpu if you have GPU
