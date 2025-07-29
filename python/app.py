@@ -55,16 +55,11 @@ class AdvancedReadmeGenerator:
             else:
                 self.log("⚠️ No .env file found, checking environment variables...")
         
-        # Try to get API key from environment or direct assignment
+        # Get API key from environment only
         self.api_key = os.getenv('GOOGLE_API_KEY')
         
-        # If still not found, try the hardcoded key as fallback
         if not self.api_key:
-            self.api_key = 'AIzaSyDG5Aau7OV39YoTxHvaGP4SZNcNVHNUKRk'
-            self.log("⚠️ Using fallback API key")
-        
-        if not self.api_key:
-            raise ValueError("GOOGLE_API_KEY not found in environment variables, .env file, or as fallback")
+            raise ValueError("GOOGLE_API_KEY not found in environment variables or .env file. Please set your API key in a .env file or as an environment variable.")
         
         self.log("✅ Google API key loaded successfully")
     
