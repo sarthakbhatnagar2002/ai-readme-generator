@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
 const { CodebaseExtractor } = require('./codebaseExtractor');
+require('dotenv').config();
 
 /**
  * Generate README from PDF using Python RAG script
@@ -44,7 +45,7 @@ async function generateReadmeFromPDF(pdfPath, extensionPath) {
         cwd: path.join(extensionPath, '..', 'python'), // Set working directory to python folder
         env: {
           ...process.env,
-          GOOGLE_API_KEY: 'AIzaSyDG5Aau7OV39YoTxHvaGP4SZNcNVHNUKRk',
+          GOOGLE_API_KEY: process.env.GOOGLE_API_KEY,
           PYTHONIOENCODING: 'utf-8'  // Force UTF-8 encoding for Python output
         }
       });
