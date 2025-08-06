@@ -6,4 +6,15 @@ test/**
 vsc-extension-quickstart.md
 **/jsconfig.json
 **/*.map
+**/*.ts
 **/.eslintrc.json
+**/.env
+**/*.log
+**/node_modules/**
+**/*.tmp
+**/*.temp
+**/venv/**
+**/dist/**
+**/out/**
+.DS_Store
+Thumbs.db

@@ -31,8 +31,17 @@ class CodebaseExtractor {
             'codesummary.pdf',
             'codesummary.json',
             'README.md',
-            'package-lock.json'
+            'package-lock.json',
+            'venv',
+            '.venv',
+            '__pycache__',
+            '*.pyc',
+            '*.pyo',
+            '.pytest_cache',
+            '.mypy_cache',
+            '.tox'
         ];
+
     }
 
     shouldIgnore(filePath) {

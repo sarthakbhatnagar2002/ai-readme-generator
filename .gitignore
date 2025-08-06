@@ -1,0 +1,14 @@
+.vscode/
+.vscode-test/
+test/
+**/node_modules/
+python/venv/
+**/__pycache__/
+**/*.log
+**/*.map
+.env
+**/.env
+*.pyc
+.DS_Store
+**/*.md
+!README.md

@@ -1,12 +1,17 @@
 {
-  "name": "extension",
+  "name": "code-summary-generator",
   "displayName": "Code Summary Generator",
-  "description": "Generates a JSON and PDF summary of a codebase.",
-  "version": "0.0.1",
+  "publisher": "SarthakBhatnagar30",
+  "description": "Generates a JSON and PDF summary of a codebase using AI.",
+  "version": "0.0.6",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SarthakBhatnagar30/code-summary-generator.git"
+  },
   "engines": {
     "vscode": "^1.102.0"
   },
-  "categories": ["Utilities"],
+  "categories": ["Other"],
   "activationEvents": [
     "onCommand:extension.generateCodeSummary"
   ],
@@ -15,9 +20,18 @@
     "commands": [
       {
         "command": "extension.generateCodeSummary",
-        "title": "Generate Code Summary"
+        "title": "Generate Code Summary with AI",
+        "category": "Code Summary"
       }
-    ]
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "extension.generateCodeSummary",
+          "when": "workspaceFolderCount > 0"
+        }
+      ]
+    }
   },
   "scripts": {
     "lint": "eslint .",
