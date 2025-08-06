@@ -3,7 +3,7 @@
   "displayName": "Code Summary Generator",
   "publisher": "SarthakBhatnagar30",
   "description": "Generates a JSON and PDF summary of a codebase using AI.",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "repository": {
     "type": "git",
     "url": "https://github.com/SarthakBhatnagar30/code-summary-generator.git"
