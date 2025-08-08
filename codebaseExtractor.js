@@ -1,6 +1,5 @@
 const fs = require('fs');
 const path = require('path');
-const { jsPDF } = require('jspdf');
 const { spawn } = require('child_process');
 
 class CodebaseExtractor {
@@ -74,88 +73,6 @@ class CodebaseExtractor {
         } catch (error) {
             return null;
         }
-    }
-
-    generatePDF(outputPath) {
-        const doc = new jsPDF({ unit: 'pt', format: 'letter' });
-        const summary = this.generateSummary();
-
-        let y = 40;
-        doc.setFontSize(18);
-        doc.text(`Codebase Summary Report: ${summary.project}`, 40, y);
-        y += 30;
-
-        doc.setFontSize(12);
-        doc.text(`Generated: ${new Date().toLocaleString()}`, 40, y);
-        y += 20;
-        doc.text(`Total Files: ${summary.totalFiles}`, 40, y);
-        y += 15;
-        doc.text(`Total Directories: ${summary.totalDirectories}`, 40, y);
-        y += 15;
-        doc.text(`Total Size: ${summary.totalSize}`, 40, y);
-        y += 20;
-
-        doc.text('File Types:', 40, y);
-        y += 15;
-        Object.entries(summary.fileTypes).forEach(([ext, count]) => {
-            if (y > 700) {
-                doc.addPage();
-                y = 40;
-            }
-            doc.text(`  ${ext || 'no-extension'}: ${count} files`, 60, y);
-            y += 12;
-        });
-
-        y += 20;
-        doc.setFontSize(14);
-        doc.text('── Source Code Listing ──', 40, y);
-        y += 20;
-
-        for (const file of this.data.files) {
-            if (!file.isText || file.size > 500_000) continue;
-
-            if (y > 700) {
-                doc.addPage();
-                y = 40;
-            }
-
-            doc.setFontSize(12);
-            doc.setFont(undefined, 'bold');
-            doc.text(`File: ${file.path}`, 40, y);
-            y += 14;
-
-            doc.setFont(undefined, 'normal');
-            doc.setFontSize(8);
-            doc.text(`Size: ${file.size} bytes | Lines: ${file.lines} | Modified: ${new Date(file.modified).toLocaleDateString()}`, 40, y);
-            y += 16;
-
-            doc.setFontSize(7);
-            const lines = file.content.split('\n');
-
-            for (let i = 0; i < lines.length; i++) {
-                if (y > 750) {
-                    doc.addPage();
-                    y = 40;
-                }
-
-                let line = lines[i];
-                if (line.length > 120) line = line.slice(0, 120) + '...';
-
-                const lineNum = String(i + 1).padStart(4, ' ');
-                doc.text(`${lineNum}: ${line}`, 40, y);
-                y += 10;
-            }
-            y += 15;
-
-            if (y < 750) {
-                doc.setDrawColor(200, 200, 200);
-                doc.line(40, y, 550, y);
-                y += 10;
-            }
-        }
-
-        doc.save(outputPath);
-        console.log(`✅ PDF report saved with source code to: ${outputPath}`);
     }
 
     processFile(filePath, relativePath) {
@@ -254,6 +171,7 @@ class CodebaseExtractor {
         const outputFile = path.resolve(outputPath);
         fs.writeFileSync(outputFile, JSON.stringify(this.data, null, 2));
         console.log(`✅ Data saved to: ${outputFile}`);
+        return outputFile;
     }
 
     generateSummary() {
@@ -277,12 +195,12 @@ class CodebaseExtractor {
     }
 }
 
-async function runPythonWithPDF(pdfPath) {
+async function runPythonWithJSON(jsonPath) {
     const pythonExe = 'C:\\Users\\sarth\\AppData\\Local\\Programs\\Python\\Python312\\python.exe'; // Update if needed
     const pythonScript = path.resolve(__dirname, 'app.py');
 
     return new Promise((resolve, reject) => {
-        const pyProcess = spawn(pythonExe, [pythonScript, pdfPath, '--json']);
+        const pyProcess = spawn(pythonExe, [pythonScript, jsonPath]);
 
         pyProcess.stdout.on('data', (data) => {
             console.log(`Python stdout: ${data.toString()}`);
@@ -299,20 +217,13 @@ async function runPythonWithPDF(pdfPath) {
     });
 }
 
-function extractCodebase(folderPath, outputPath, generatePDF = false) {
+function extractCodebase(folderPath, outputPath = 'codebase-data.json') {
     try {
         const extractor = new CodebaseExtractor(folderPath);
         const data = extractor.extract();
 
-        if (outputPath) {
-            extractor.saveToFile(outputPath);
-        }
-
-        let pdfPath = null;
-        if (generatePDF) {
-            pdfPath = outputPath ? outputPath.replace('.json', '.pdf') : 'codebase-report.pdf';
-            extractor.generatePDF(pdfPath);
-        }
+        // Always save JSON file and return the path
+        const jsonPath = extractor.saveToFile(outputPath);
 
         const summary = extractor.generateSummary();
         console.log('\n=== CODEBASE SUMMARY ===');
@@ -325,10 +236,10 @@ function extractCodebase(folderPath, outputPath, generatePDF = false) {
             console.log(`  ${ext}: ${count} files`);
         });
 
-        return { data, pdfPath };
+        return { data, jsonPath };
     } catch (error) {
         console.error('Error extracting codebase:', error.message);
-        return { data: null, pdfPath: null };
+        return { data: null, jsonPath: null };
     }
 }
 
@@ -338,23 +249,20 @@ if (require.main === module) {
         const args = process.argv.slice(2);
 
         if (args.length === 0) {
-            console.log('Usage: node codebase-extractor.js <folder-path> [output-file] [--pdf]');
-            console.log('Example: node codebase-extractor.js ./my-project ./output.json --pdf');
-            console.log('Options:');
-            console.log('  --pdf    Generate PDF report along with JSON data');
+            console.log('Usage: node codebase-extractor.js <folder-path> [output-file]');
+            console.log('Example: node codebase-extractor.js ./my-project ./output.json');
             process.exit(1);
         }
 
         const folderPath = args[0];
         const outputPath = args[1] || 'codebase-data.json';
-        const generatePDF = args.includes('--pdf');
 
-        const result = extractCodebase(folderPath, outputPath, generatePDF);
+        const result = extractCodebase(folderPath, outputPath);
 
-        if (generatePDF && result.pdfPath) {
+        if (result.jsonPath) {
             try {
-                await runPythonWithPDF(result.pdfPath);
-                console.log('✅ Python script ran successfully with generated PDF');
+                await runPythonWithJSON(result.jsonPath);
+                console.log('✅ Python script ran successfully with generated JSON');
             } catch (err) {
                 console.error('❌ Failed to run Python script:', err.message);
             }

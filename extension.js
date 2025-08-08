@@ -2,51 +2,76 @@ const vscode = require('vscode');
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
-const { CodebaseExtractor } = require('./codebaseExtractor');
-require('dotenv').config();
 
-/**
- * Generate README from PDF using Python RAG script
- */
-async function generateReadmeFromPDF(pdfPath, extensionPath) {
-  // Python script is in the python/ subfolder
-  const pythonScriptPath = path.join(extensionPath, '..', 'python', 'app.py');
+// ADD THIS DEBUG BLOCK HERE
+console.log('=== EXTENSION STARTUP DEBUG ===');
+console.log('Extension directory:', __dirname);
+console.log('Files in extension directory:', fs.readdirSync(__dirname));
+const codebaseExtractorPath = path.join(__dirname, 'codebaseExtractor.js');
+console.log('codebaseExtractor.js exists:', fs.existsSync(codebaseExtractorPath));
+if (fs.existsSync(codebaseExtractorPath)) {
+  console.log('File size:', fs.statSync(codebaseExtractorPath).size, 'bytes');
+}
+console.log('=== END DEBUG ===');
+
+let CodebaseExtractor = null;
+try {
+  console.log('Current directory:', __dirname);
+  console.log('Looking for codebaseExtractor.js');
   
-  // Check if Python script exists
+  const fs = require('fs');
+  const extPath = path.join(__dirname, 'codebaseExtractor.js');
+  console.log('File exists:', fs.existsSync(extPath));
+  console.log('Files in directory:', fs.readdirSync(__dirname));
+  
+  const extractor = require('./codebaseExtractor');
+  console.log('Required module:', extractor);
+  console.log('CodebaseExtractor property:', extractor.CodebaseExtractor);
+  
+  CodebaseExtractor = extractor.CodebaseExtractor;
+  console.log('CodebaseExtractor loaded successfully');
+} catch (error) {
+  console.error('Failed to load CodebaseExtractor:', error.message);
+  console.error('Error stack:', error.stack);
+}
+
+async function generateReadmeFromJSON(jsonPath, extensionPath, apiKey) {
+  const pythonScriptPath = path.join(extensionPath, 'python', 'app.py');
+
   if (!fs.existsSync(pythonScriptPath)) {
-    throw new Error(`Python script not found at: ${pythonScriptPath}`);
+    return "# Auto-generated README\n\nThis README was generated from the codebase analysis. Python AI script was not available.";
   }
-  
-  console.log(`🐍 Using Python script: ${pythonScriptPath}`);
-  console.log(`📄 Processing PDF: ${pdfPath}`);
-  
+
+  // Check if API key is provided
+  if (!apiKey || apiKey.trim() === '') {
+    throw new Error('Gemini API key not found. Please set "codeSummaryGenerator.apiKey" in your VS Code settings.');
+  }
+
   return new Promise((resolve, reject) => {
-    // Try different Python executables
     const pythonCommands = [
-      'C:\\Users\\sarth\\AppData\\Local\\Programs\\Python\\Python312\\python.exe', 
+      'C:\\Users\\sarth\\AppData\\Local\\Programs\\Python\\Python312\\python.exe',
       'python3',
       'python',
       'py'
     ];
-    
+
     let currentCommandIndex = 0;
-    
+
     function tryPythonCommand() {
       if (currentCommandIndex >= pythonCommands.length) {
-        reject(new Error('❌ Python not found. Please ensure Python is installed.'));
+        resolve("# Auto-generated README\n\nThis README was generated from the codebase analysis. Python was not available for AI generation.");
         return;
       }
-      
+
       const pythonCmd = pythonCommands[currentCommandIndex];
-      console.log(`🔄 Trying Python command: ${pythonCmd}`);
-      
-      const pythonProcess = spawn(pythonCmd, [pythonScriptPath, pdfPath, '--json'], {
+
+      // ✅ UPDATED: Pass JSON path instead of PDF path, removed --json flag
+      const pythonProcess = spawn(pythonCmd, [pythonScriptPath, jsonPath, apiKey, '--clean'], {
         stdio: ['pipe', 'pipe', 'pipe'],
-        cwd: path.join(extensionPath, '..', 'python'), // Set working directory to python folder
+        cwd: path.dirname(pythonScriptPath),
         env: {
           ...process.env,
-          GOOGLE_API_KEY: process.env.GOOGLE_API_KEY,
-          PYTHONIOENCODING: 'utf-8'  // Force UTF-8 encoding for Python output
+          PYTHONIOENCODING: 'utf-8'
         }
       });
 
@@ -54,38 +79,26 @@ async function generateReadmeFromPDF(pdfPath, extensionPath) {
       let stderr = '';
 
       pythonProcess.stdout.on('data', (data) => {
-        const output = data.toString();
-        stdout += output;
-        console.log('🐍 Python stdout:', output);
+        stdout += data.toString();
       });
 
       pythonProcess.stderr.on('data', (data) => {
-        const output = data.toString();
-        stderr += output;
-        console.log('🐍 Python stderr:', output);
+        stderr += data.toString();
       });
 
       pythonProcess.on('close', (code) => {
-        console.log(`🐍 Python process exited with code: ${code}`);
-        
         if (code === 0) {
-          try {
-            const result = JSON.parse(stdout);
-            if (result.success) {
-              console.log('✅ Successfully parsed JSON response');
-              resolve(result.content);
-            } else {
-              reject(new Error(result.message || 'Python script failed'));
-            }
-          } catch (parseError) {
-            console.log('⚠️ Could not parse JSON, using raw output');
-            if (stdout.trim()) {
-              resolve(stdout.trim());
-            } else {
-              reject(new Error('No output from Python script'));
-            }
+          // With --clean flag, we get direct README content, not JSON
+          if (stdout.trim()) {
+            resolve(stdout.trim());
+          } else {
+            resolve("# Auto-generated README\n\nCodebase analysis completed but no content was generated.");
           }
         } else {
+          // Log stderr for debugging
+          if (stderr.trim()) {
+            console.error(`Python stderr: ${stderr}`);
+          }
           currentCommandIndex++;
           tryPythonCommand();
         }
@@ -96,126 +109,112 @@ async function generateReadmeFromPDF(pdfPath, extensionPath) {
           currentCommandIndex++;
           tryPythonCommand();
         } else {
-          reject(new Error(`Failed to start Python process: ${error.message}`));
+          reject(new Error(`Python process error: ${error.message}`));
         }
       });
     }
-    
+
     tryPythonCommand();
   });
 }
 
-/**
- * Main function to generate code summary and README
- */
 async function generateCodeSummary(extensionPath) {
   const folders = vscode.workspace.workspaceFolders;
   if (!folders || folders.length === 0) {
     throw new Error('No folder is open in VS Code.');
   }
-  
-  const folderPath = folders[0].uri.fsPath;
-  console.log(`📂 Processing workspace: ${folderPath}`);
-  
-  const extractor = new CodebaseExtractor(folderPath);
 
-  // Step 1: Extract codebase
-  console.log('🔍 Step 1: Extracting codebase...');
+  const folderPath = folders[0].uri.fsPath;
+
+  if (!CodebaseExtractor) {
+    console.log('CodebaseExtractor is still null after loading attempt');
+    throw new Error('CodebaseExtractor is not available. Please check if the codebaseExtractor.js file exists.');
+  }
+
+  // ✅ Get API key from VS Code settings
+  const apiKey = vscode.workspace.getConfiguration('codeSummaryGenerator').get('apiKey');
+  
+  // ✅ Check if API key is set before processing
+  if (!apiKey || apiKey.trim() === '') {
+    throw new Error('Gemini API key not set. Please add "codeSummaryGenerator.apiKey" to your VS Code settings.');
+  }
+
+  const extractor = new CodebaseExtractor(folderPath);
   extractor.extract();
 
-  // Step 2: Save JSON
-  console.log('💾 Step 2: Saving JSON...');
   const jsonPath = path.join(folderPath, 'codesummary.json');
   extractor.saveToFile(jsonPath);
 
-  // Step 3: Generate PDF in workspace folder
-  console.log('📄 Step 3: Generating PDF...');
-  const pdfPath = path.join(folderPath, 'codesummary.pdf');
-  extractor.generatePDF(pdfPath);
-  
-  // Verify PDF was created
-  if (!fs.existsSync(pdfPath)) {
-    throw new Error(`PDF was not created at: ${pdfPath}`);
-  }
-  console.log(`✅ PDF created successfully: ${pdfPath}`);
+  // ✅ REMOVED: PDF generation - no longer needed
+  // const pdfPath = path.join(folderPath, 'codesummary.pdf');
+  // extractor.generatePDF(pdfPath);
 
-  // Step 4: Generate README using Python RAG
-  console.log('🤖 Step 4: Generating README with AI...');
-  const readmeContent = await generateReadmeFromPDF(pdfPath, extensionPath);
-  
-  // Step 5: Save README
-  console.log('📝 Step 5: Saving README...');
+  if (!fs.existsSync(jsonPath)) {
+    throw new Error(`JSON was not created at: ${jsonPath}`);
+  }
+
+  // ✅ UPDATED: Use JSON instead of PDF for README generation
+  const readmeContent = await generateReadmeFromJSON(jsonPath, extensionPath, apiKey);
+
   const readmePath = path.join(folderPath, 'README.md');
   const header = `<!-- Auto-generated README using AI RAG -->\n<!-- Generated on: ${new Date().toISOString()} -->\n\n`;
   fs.writeFileSync(readmePath, header + readmeContent, 'utf8');
-  
-  return { readmePath, pdfPath, jsonPath };
+
+  // ✅ UPDATED: Return only readmePath and jsonPath (no pdfPath)
+  return { readmePath, jsonPath };
 }
 
 function activate(context) {
-  console.log('🚀 README Generator Extension is now active!');
-  
+  const outputChannel = vscode.window.createOutputChannel('README Generator');
+
   const disposable = vscode.commands.registerCommand('extension.generateCodeSummary', async () => {
+    outputChannel.show();
+
     try {
       await vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
         title: "Generating README with AI",
         cancellable: false
-      }, async (progress, token) => {
-        
+      }, async (progress) => {
         progress.report({ increment: 0, message: "Starting process..." });
-        
-        try {
-          const result = await generateCodeSummary(context.extensionPath);
-          
-          progress.report({ increment: 100, message: "Complete!" });
-          
-          const choice = await vscode.window.showInformationMessage(
-            `✅ README generated successfully!`,
-            'Open README',
-            'Open PDF',
-            'Open Folder'
-          );
-          
-          if (choice === 'Open README') {
-            const document = await vscode.workspace.openTextDocument(result.readmePath);
-            await vscode.window.showTextDocument(document);
-          } else if (choice === 'Open PDF') {
-            vscode.env.openExternal(vscode.Uri.file(result.pdfPath));
-          } else if (choice === 'Open Folder') {
-            vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(path.dirname(result.readmePath)));
-          }
-          
-        } catch (error) {
-          progress.report({ increment: 100, message: "Failed!" });
-          throw error;
+        const result = await generateCodeSummary(context.extensionPath);
+        progress.report({ increment: 100, message: "Complete!" });
+
+        // ✅ UPDATED: Removed PDF option since we no longer generate PDFs
+        const choice = await vscode.window.showInformationMessage(
+          `README generated successfully!`,
+          'Open README',
+          'Open JSON Data',
+          'Open Folder'
+        );
+
+        if (choice === 'Open README') {
+          const document = await vscode.workspace.openTextDocument(result.readmePath);
+          await vscode.window.showTextDocument(document);
+        } else if (choice === 'Open JSON Data') {
+          const document = await vscode.workspace.openTextDocument(result.jsonPath);
+          await vscode.window.showTextDocument(document);
+        } else if (choice === 'Open Folder') {
+          vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(path.dirname(result.readmePath)));
         }
       });
 
     } catch (error) {
-      console.error('❌ Extension error:', error);
-      vscode.window.showErrorMessage(`❌ Failed: ${error.message}`);
-      
-      const outputChannel = vscode.window.createOutputChannel('README Generator');
       outputChannel.appendLine(`Error: ${error.message}`);
-      outputChannel.appendLine(`Stack: ${error.stack}`);
-      outputChannel.show();
+      vscode.window.showErrorMessage(`Failed: ${error.message}`);
     }
   });
 
   context.subscriptions.push(disposable);
-  
+
   const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
   statusBarItem.text = "$(file-code) Generate README";
   statusBarItem.command = 'extension.generateCodeSummary';
   statusBarItem.tooltip = 'Generate README from codebase using AI';
   statusBarItem.show();
-  
   context.subscriptions.push(statusBarItem);
 }
 
-function deactivate() {
-  console.log('📴 README Generator Extension deactivated');
-}
+function deactivate() {}
 
 module.exports = { activate, deactivate };

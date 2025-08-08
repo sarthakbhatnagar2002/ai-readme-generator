@@ -2,8 +2,8 @@
   "name": "code-summary-generator",
   "displayName": "Code Summary Generator",
   "publisher": "SarthakBhatnagar30",
-  "description": "Generates a JSON and PDF summary of a codebase using AI.",
-  "version": "0.0.9",
+  "description": "Generates a JSON summary of a codebase and creates README using AI.",
+  "version": "0.1.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/SarthakBhatnagar30/code-summary-generator.git"
@@ -33,6 +33,17 @@
           "when": "workspaceFolderCount > 0"
         }
       ]
+    },
+    "configuration": {
+      "title": "Code Summary Generator",
+      "properties": {
+        "codeSummaryGenerator.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Your Gemini API key for generating code summaries",
+          "markdownDescription": "Enter your Gemini API key. Get one from [Google AI Studio](https://makersuite.google.com/app/apikey)"
+        }
+      }
     }
   },
   "scripts": {
@@ -52,6 +63,6 @@
     "typescript": "^4.8.4"
   },
   "dependencies": {
-    "jspdf": "^3.0.1"
+    "atob": "^2.1.2"
   }
 }

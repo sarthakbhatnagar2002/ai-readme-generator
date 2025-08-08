@@ -7,8 +7,7 @@ import pickle
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 
-# PDF and text processing
-from PyPDF2 import PdfReader
+# Text processing (removed PDF dependencies)
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 # Google Gemini and LangChain
@@ -19,17 +18,17 @@ from langchain.chains.question_answering import load_qa_chain
 from langchain.prompts import PromptTemplate
 from langchain.schema import Document
 
-# Environment
+# Environment (keeping for backward compatibility but not required)
 from dotenv import load_dotenv
 import re
 
 class AdvancedReadmeGenerator:
-    def __init__(self, verbose=True):
+    def __init__(self, api_key: str = None, verbose=True):
         """Initialize the advanced README generator with RAG capabilities"""
         self.verbose = verbose  # Control logging output
         self.vector_store = None
         self.embeddings = None
-        self.load_environment()
+        self.api_key = api_key  # Accept API key directly
         self.setup_gemini()
         
     def log(self, message):
@@ -37,35 +36,13 @@ class AdvancedReadmeGenerator:
         if self.verbose:
             print(message)
         
-    def load_environment(self):
-        """Load environment variables from .env file or system"""
-        # First try to load from script directory (extension folder)
-        script_dir = Path(__file__).parent
-        env_file = script_dir / '.env'
-        
-        if env_file.exists():
-            load_dotenv(env_file)
-            self.log(f"✅ Loaded environment from: {env_file}")
-        else:
-            # Try current working directory
-            cwd_env = Path.cwd() / '.env'
-            if cwd_env.exists():
-                load_dotenv(cwd_env)
-                self.log(f"✅ Loaded environment from: {cwd_env}")
-            else:
-                self.log("⚠️ No .env file found, checking environment variables...")
-        
-        # Get API key from environment only
-        self.api_key = os.getenv('GOOGLE_API_KEY')
-        
-        if not self.api_key:
-            raise ValueError("GOOGLE_API_KEY not found in environment variables or .env file. Please set your API key in a .env file or as an environment variable.")
-        
-        self.log("✅ Google API key loaded successfully")
-    
     def setup_gemini(self):
-        """Configure Gemini API and embeddings"""
+        """Configure Gemini API and embeddings using provided API key"""
         try:
+            # Use the provided API key, no need to load from environment
+            if not self.api_key:
+                raise ValueError("API key not provided. Please set your Gemini API key in VS Code settings.")
+            
             # Configure the main Gemini API
             genai.configure(api_key=self.api_key)
             
@@ -88,43 +65,99 @@ class AdvancedReadmeGenerator:
             try:
                 test_embedding = self.embeddings.embed_query("test")
                 if test_embedding and len(test_embedding) > 0:
-                    self.log("Embeddings test successful")
+                    self.log("✅ Embeddings test successful")
                 else:
                     raise Exception("Embeddings test returned empty result")
             except Exception as e:
-                self.log(f"Embeddings test failed: {e}")
+                self.log(f"❌ Embeddings test failed: {e}")
                 raise Exception(f"Embeddings initialization failed: {e}")
                 
         except Exception as e:
             raise Exception(f"Failed to configure Gemini API: {str(e)}")
     
-    def extract_text_from_pdf(self, pdf_path: str) -> str:
-        """Extract text content from PDF file using PyPDF2"""
+    def load_codebase_from_json(self, json_path: str) -> str:
+        """Load and process codebase data from JSON file"""
         try:
-            self.log(f"📄 Reading PDF: {pdf_path}")
-            text = ""
-            with open(pdf_path, 'rb') as file:
-                pdf_reader = PdfReader(file)
-                
-                for page_num, page in enumerate(pdf_reader.pages):
-                    try:
-                        page_text = page.extract_text()
-                        if page_text.strip():  # Only add non-empty pages
-                            text += f"\n--- Page {page_num + 1} ---\n{page_text}\n"
-                    except Exception as e:
-                        self.log(f"⚠️ Warning: Could not extract text from page {page_num + 1}: {e}")
-                        continue
-                
-                if not text.strip():
-                    raise Exception("No text could be extracted from the PDF")
-                
-                self.log(f"✅ Extracted {len(text)} characters from PDF ({len(pdf_reader.pages)} pages)")
-                return text
+            self.log(f"📄 Reading JSON codebase data: {json_path}")
+            
+            with open(json_path, 'r', encoding='utf-8') as file:
+                codebase_data = json.load(file)
+            
+            # Extract meaningful text from the JSON structure
+            text_content = self.convert_json_to_text(codebase_data)
+            
+            self.log(f"✅ Loaded codebase data with {len(text_content)} characters")
+            return text_content
                 
         except FileNotFoundError:
-            raise Exception(f"PDF file not found: {pdf_path}")
+            raise Exception(f"JSON file not found: {json_path}")
+        except json.JSONDecodeError as e:
+            raise Exception(f"Invalid JSON format: {str(e)}")
         except Exception as e:
-            raise Exception(f"Error reading PDF: {str(e)}")
+            raise Exception(f"Error reading JSON: {str(e)}")
+    
+    def convert_json_to_text(self, codebase_data: Dict[str, Any]) -> str:
+        """Convert the JSON codebase data to structured text for processing"""
+        text_parts = []
+        
+        # Add project metadata
+        text_parts.append("=== PROJECT METADATA ===")
+        text_parts.append(f"Root Directory: {codebase_data.get('rootDirectory', 'N/A')}")
+        text_parts.append(f"Timestamp: {codebase_data.get('timestamp', 'N/A')}")
+        
+        # Add summary information
+        if 'summary' in codebase_data:
+            summary = codebase_data['summary']
+            text_parts.append("\n=== PROJECT SUMMARY ===")
+            text_parts.append(f"Total Files: {summary.get('totalFiles', 0)}")
+            text_parts.append(f"Total Directories: {summary.get('totalDirectories', 0)}")
+            text_parts.append(f"Total Size: {summary.get('totalSize', 0)} bytes")
+            
+            if 'fileTypes' in summary:
+                text_parts.append("\nFile Types:")
+                for ext, count in summary['fileTypes'].items():
+                    text_parts.append(f"  {ext}: {count} files")
+        
+        # Add directory structure
+        if 'directories' in codebase_data:
+            text_parts.append("\n=== DIRECTORY STRUCTURE ===")
+            for directory in codebase_data['directories']:
+                text_parts.append(f"Directory: {directory.get('path', 'N/A')}")
+        
+        # Add file contents - this is the most important part
+        if 'files' in codebase_data:
+            text_parts.append("\n=== SOURCE CODE FILES ===")
+            
+            for file_data in codebase_data['files']:
+                file_path = file_data.get('path', 'unknown')
+                file_name = file_data.get('name', 'unknown')
+                file_size = file_data.get('size', 0)
+                file_extension = file_data.get('extension', '')
+                file_lines = file_data.get('lines', 0)
+                is_text = file_data.get('isText', False)
+                file_content = file_data.get('content', '')
+                
+                text_parts.append(f"\n--- FILE: {file_path} ---")
+                text_parts.append(f"Name: {file_name}")
+                text_parts.append(f"Extension: {file_extension}")
+                text_parts.append(f"Size: {file_size} bytes")
+                text_parts.append(f"Lines: {file_lines}")
+                text_parts.append(f"Is Text File: {is_text}")
+                
+                # Include file content if it's a text file and not too large
+                if is_text and file_content and file_size < 500000:  # Skip very large files
+                    text_parts.append("Content:")
+                    text_parts.append(file_content)
+                elif not is_text:
+                    text_parts.append("Content: [Binary file - content not included]")
+                elif file_size >= 500000:
+                    text_parts.append("Content: [Large file - content truncated for processing]")
+                else:
+                    text_parts.append("Content: [No content available]")
+                
+                text_parts.append("--- END FILE ---\n")
+        
+        return "\n".join(text_parts)
     
     def get_text_chunks(self, text: str) -> List[str]:
         """Split text into manageable chunks for vector processing"""
@@ -132,7 +165,7 @@ class AdvancedReadmeGenerator:
             chunk_size=10000,  # Larger chunks for code context
             chunk_overlap=1000,  # Overlap to maintain context
             length_function=len,
-            separators=["\n\n", "\n", "File:", "---", " ", ""]  # Code-aware separators
+            separators=["\n\n", "\n", "--- FILE:", "===", "---", " ", ""]  # Code-aware separators
         )
         
         chunks = text_splitter.split_text(text)
@@ -245,7 +278,7 @@ Analyze the code context carefully and create a README that includes:
         """Use RAG to analyze codebase and generate README content"""
         try:
             if not self.vector_store:
-                raise Exception("Vector store not initialized. Process PDF first.")
+                raise Exception("Vector store not initialized. Process JSON first.")
             
             self.log("🔍 Searching for relevant code context...")
             
@@ -285,21 +318,24 @@ Analyze the code context carefully and create a README that includes:
             if hasattr(self, 'vector_store_path') and os.path.exists(self.vector_store_path):
                 import shutil
                 shutil.rmtree(os.path.dirname(self.vector_store_path))
-                self.log("Cleaned up temporary vector store")
+                self.log("🧹 Cleaned up temporary vector store")
         except Exception as e:
             self.log(f"Warning: Could not clean up temporary files: {e}")
     
-    def process_pdf(self, pdf_path: str) -> Dict[str, Any]:
-        """Main method to process PDF and generate README using RAG"""
+    def process_json(self, json_path: str) -> Dict[str, Any]:
+        """Main method to process JSON codebase data and generate README using RAG"""
         try:
-            self.log(f"Processing PDF with RAG: {pdf_path}")
+            self.log(f"🚀 Processing JSON codebase data with RAG: {json_path}")
             
-            pdf_content = self.extract_text_from_pdf(pdf_path)
+            # Load and convert JSON to text
+            codebase_text = self.load_codebase_from_json(json_path)
 
-            text_chunks = self.get_text_chunks(pdf_content)
+            # Split into chunks for vector processing
+            text_chunks = self.get_text_chunks(codebase_text)
             if not self.create_vector_store(text_chunks):
                 raise Exception("Failed to create vector store")
             
+            # Generate README using RAG
             readme_question = """
             Analyze this codebase comprehensively and generate a detailed README.md file. 
             I need a professional README that covers:
@@ -340,10 +376,10 @@ Analyze the code context carefully and create a README that includes:
             Please be specific and detailed, focusing on the actual code functionality rather than generic descriptions.
             """
             
-            # Step 5: Generate README using RAG
+            # Generate README using RAG
             readme_content = self.analyze_codebase_with_rag(readme_question)
             
-            # Step 6: Post-process the content to ensure it's well-formatted
+            # Post-process the content to ensure it's well-formatted
             readme_content = self.post_process_readme(readme_content)
             
             return {
@@ -351,7 +387,7 @@ Analyze the code context carefully and create a README that includes:
                 "content": readme_content,
                 "message": "README generated successfully using RAG analysis",
                 "stats": {
-                    "pdf_text_length": len(pdf_content),
+                    "json_text_length": len(codebase_text),
                     "chunks_created": len(text_chunks),
                     "readme_length": len(readme_content)
                 }
@@ -392,9 +428,9 @@ Analyze the code context carefully and create a README that includes:
 
 def main():
     """Main function to handle command line execution"""
-    parser = argparse.ArgumentParser(description='Generate README from PDF using RAG analysis')
-    parser.add_argument('pdf_path', help='Path to the PDF file containing codebase summary')
-    parser.add_argument('--json', action='store_true', help='Output result as JSON')
+    parser = argparse.ArgumentParser(description='Generate README from JSON codebase data using RAG analysis')
+    parser.add_argument('json_path', help='Path to the JSON file containing codebase data')
+    parser.add_argument('api_key', help='Gemini API key for AI processing')
     parser.add_argument('--output', '-o', help='Output file path for README content')
     parser.add_argument('--question', help='Custom question for README generation')
     parser.add_argument('--clean', action='store_true', help='Output only the README content without logs')
@@ -406,21 +442,16 @@ def main():
         # Determine verbose mode - only verbose if explicitly requested or not in clean mode
         verbose_mode = args.verbose and not args.clean
         
-        if not args.json and not args.clean:
-            print(f"🚀 Starting README generation for: {args.pdf_path}")
+        if not args.clean:
+            print(f"🚀 Starting README generation for: {args.json_path}")
         
-        # Create generator instance with appropriate verbosity
-        generator = AdvancedReadmeGenerator(verbose=verbose_mode)
+        # Create generator instance with API key and appropriate verbosity
+        generator = AdvancedReadmeGenerator(api_key=args.api_key, verbose=verbose_mode)
         
-        # Process the PDF
-        result = generator.process_pdf(args.pdf_path)
+        # Process the JSON file
+        result = generator.process_json(args.json_path)
         
-        if args.json:
-            # Output as JSON (for VS Code extension) - but remove stats if clean mode
-            if args.clean and "stats" in result:
-                del result["stats"]
-            print(json.dumps(result, indent=2))
-        elif args.clean:
+        if args.clean:
             # Clean output mode - only README content
             if result["success"]:
                 print(result["content"])
@@ -435,7 +466,7 @@ def main():
                 if "stats" in result:
                     stats = result["stats"]
                     print(f"📊 Processing stats:")
-                    print(f"   - PDF text: {stats['pdf_text_length']:,} characters")
+                    print(f"   - JSON text: {stats['json_text_length']:,} characters")
                     print(f"   - Text chunks: {stats['chunks_created']}")
                     print(f"   - README: {stats['readme_length']:,} characters")
                 
@@ -459,14 +490,12 @@ def main():
             "message": f"Script error: {str(e)}"
         }
         
-        if args.json:
-            if args.clean and "stats" in error_result:
-                del error_result["stats"]
-            print(json.dumps(error_result, indent=2))
+        if args.clean:
+            print(f"Error: {str(e)}", file=sys.stderr)
         else:
             print(f"❌ Error: {str(e)}")
         
         sys.exit(1)
 
 if __name__ == "__main__":
-    main()  
+    main()

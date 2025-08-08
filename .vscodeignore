@@ -10,7 +10,10 @@ vsc-extension-quickstart.md
 **/.eslintrc.json
 **/.env
 **/*.log
-**/node_modules/**
+# **/node_modules/**
+# !node_modules/jspdf/**
+# !node_modules/fflate/**
+# !node_modules/dotenv/**
 **/*.tmp
 **/*.temp
 **/venv/**
