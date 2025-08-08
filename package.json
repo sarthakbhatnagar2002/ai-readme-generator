@@ -3,7 +3,7 @@
   "displayName": "Code Summary Generator",
   "publisher": "SarthakBhatnagar30",
   "description": "Generates a JSON summary of a codebase and creates README using AI.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "repository": {
     "type": "git",
     "url": "https://github.com/SarthakBhatnagar30/code-summary-generator.git"
