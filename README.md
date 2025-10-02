@@ -1,75 +1,103 @@
-# Code Summary Generator README
+# Code Summary Generator: README
 
-This project is a VS Code extension that generates a comprehensive README.md file for a codebase using a Retrieval Augmented Generation (RAG) approach.  The extension analyzes the codebase, extracts key information, and leverages a large language model (LLM) to create a professional README.  It also generates a JSON summary and a PDF report of the codebase.
+This project generates a comprehensive README.md file and a PDF summarizing a codebase using a Retrieval Augmented Generation (RAG) approach.  It leverages Google Gemini for large language model (LLM) capabilities and analyzes the codebase to provide a detailed overview for developers.
+
+## Description
+
+The Code Summary Generator is a VS Code extension that analyzes a project's codebase, extracts key information, and generates a professional README.md file. This README includes details about the project's purpose, technology stack, installation, usage, structure, and any relevant configuration settings. The process involves extracting codebase information, creating a vector store for efficient similarity search, and using a RAG chain to generate the README content.  A PDF report is also generated containing a detailed analysis of the codebase.
 
 ## Features
 
-* **Codebase Analysis:** Extracts codebase statistics (file counts, sizes, types, etc.).
-* **JSON Summary Generation:** Creates a JSON file containing detailed codebase information.
-* **PDF Report Generation:** Generates a PDF report with codebase statistics and source code snippets.
-* **AI-Powered README Generation:** Uses a RAG system with Google Gemini to generate a detailed README.md file.
-* **VS Code Integration:** Seamlessly integrates into the VS Code environment via a command.
-* **Error Handling and Logging:** Includes robust error handling and detailed logging for debugging.
-* **Configuration:** Supports configuration via environment variables (GOOGLE_API_KEY).
+* **Codebase Analysis:** Extracts information about files, directories, and their contents.
+* **Vector Store Creation:** Uses FAISS to create a vector store for efficient similarity search.
+* **README Generation:** Generates a professional README.md file using Google Gemini's LLM capabilities and RAG.
+* **PDF Report Generation:** Creates a PDF report with detailed codebase analysis.
+* **VS Code Integration:** Seamlessly integrates into the VS Code environment as an extension.
+* **Error Handling:** Includes robust error handling and logging for debugging.
+* **Configuration:** Uses environment variables for API key management.
 
 ## Technology Stack
 
-* **Frontend (VS Code Extension):** JavaScript, Node.js, VS Code API, `jspdf`
-* **Backend (Python):** Python 3, `PyPDF2`, `langchain`, `langchain-google-genai`, `google-generativeai`, `faiss-cpu`, `python-dotenv`, `tiktoken`
-* **Vector Database:** FAISS
-* **LLM:** Google Gemini
+* **Languages:** JavaScript (Node.js), Python
+* **Frameworks/Libraries:**
+    * VS Code Extension API (JavaScript)
+    * Google Generative AI (Gemini)
+    * LangChain (Python)
+    * PyPDF2 (Python)
+    * FAISS (Python)
+    * `jspdf` (JavaScript - for PDF generation within the extension)
+* **Tools:**  VS Code, Node.js, npm, Python, pip
 
 ## Workflow
 
-1. **Codebase Extraction:** The VS Code extension uses `codebaseExtractor.js` to recursively traverse the open workspace folder, gathering information about files and directories.  It ignores common folders like `node_modules` and `.git`.
-2. **JSON and PDF Generation:** The extracted data is saved as a JSON file (`codesummary.json`) and a PDF report (`codesummary.pdf`) is generated using `jspdf`. The PDF includes codebase statistics and source code snippets from text files.
-3. **README Generation (Python):** The `codesummary.pdf` is passed to the Python backend (`app.py`).  `app.py` extracts text from the PDF, splits it into chunks, and creates embeddings using Google Gemini's embedding model.
-4. **Vector Store Creation:** The embeddings are stored in a FAISS vector store for efficient similarity search.
-5. **RAG Query:** The user's question (a prompt requesting a comprehensive README) is embedded, and a similarity search retrieves the most relevant code chunks.
-6. **README Generation (LLM):** The relevant code chunks and the user's question are passed to the Google Gemini chat model to generate the README content.
-7. **README Post-processing:** The generated README is post-processed to ensure proper formatting (headers, code blocks, etc.).
-8. **Output:** The generated README.md is saved to the workspace folder.
+1. **Codebase Extraction (JavaScript):** The VS Code extension (`extension.js`, `codebaseExtractor.js`) scans the project directory, identifying files and directories. It ignores files and directories specified in the `.gitignore` and `.vscodeignore` files.  It extracts file content (for text files) and metadata (size, modification time, etc.). This data is saved as a JSON file (`codebase-data.json`).
+2. **PDF Generation (JavaScript):** A preliminary PDF report (`codesummary.pdf`) is created containing a summary of the codebase analysis. This PDF includes file lists, directory structures, and basic statistics.
+3. **Python Script Execution (Python):** The extension invokes a Python script (`app.py`) which processes the `codesummary.pdf`.
+4. **PDF Processing (Python):** The Python script extracts text from the PDF.
+5. **Vector Store Creation (Python):** The extracted text is split into chunks and embedded using Google Generative AI embeddings. These embeddings are used to create a FAISS vector store.
+6. **RAG-based README Generation (Python):**  A LangChain RAG chain is used to query the vector store with a prompt that specifies the desired README content. The LLM generates the README based on the most relevant code snippets.
+7. **Post-processing (Python):** The generated README content is post-processed to ensure proper markdown formatting.
+8. **Result Handling (JavaScript):** The generated README content is received by the extension and saved as `README.md` in the project root.
+
+**Simplified Diagram:**
+
+```
+[VS Code] --(Extension)--> [Codebase Extraction (JS)] --> [PDF Generation (JS)] --> [Python Script (app.py)]
+                                                                                    |
+                                                                                    V
+                                                                            [PDF Processing, Vector Store, RAG (Python)] --> [README Generation (Python)] --> [README.md (VS Code)]
+```
 
 ## Installation
 
-1. **Prerequisites:** Ensure you have Node.js and npm installed.  The Python backend requires Python 3 and the packages listed in `python/requirements.txt`.  You'll also need a Google Cloud project with the Gemini API enabled and a GOOGLE_API_KEY.
-2. **Install Python Dependencies:**
-   ```bash
-   cd python
-   pip install -r requirements.txt
-   ```
-3. **Install VS Code Extension:**  Install the "Code Summary Generator" extension from the VS Code Marketplace (or clone this repository and build it).
+1. **Install the VS Code Extension:**  This extension is not yet published on the VS Code Marketplace.  To run it, clone the repository and follow the development instructions below.
+
+2. **Python Dependencies:**  Ensure you have Python 3 installed. Install the required Python packages using pip:
+
+```bash
+pip install -r python/requirements.txt
+```
+
+3. **Google Cloud API Key:** Obtain a Google Cloud API key with access to Gemini and embeddings. Set the environment variable `GOOGLE_API_KEY` or `codeSummaryGenerator.apiKey` (for the extension) with your API key.  The extension will prioritize `codeSummaryGenerator.apiKey` if set in VS Code settings.
 
 ## Usage
 
-1. Open your VS Code project.
-2. Open the command palette (Ctrl+Shift+P or Cmd+Shift+P).
-3. Type "Generate Code Summary" and select the command.
-4. The extension will generate `codesummary.json`, `codesummary.pdf`, and `README.md` in your workspace folder.
+1. **Open your project in VS Code.**
+2. **Run the command "Generate Code Summary".** This will trigger the extension.
+3. **The extension will generate `README.md` and `codesummary.pdf` in your project's root directory.**
 
 ## Project Structure
 
 ```
 code-summary-generator/
-├── extension/             # VS Code extension code
-│   ├── codebaseExtractor.js
-│   ├── extension.js
-│   ├── package.json
-│   └── ...
-└── python/                # Python backend code
-    ├── app.py             # Main Python script
-    ├── requirements.txt   # Python dependencies
+├── extension.js          // Main VS Code extension file
+├── codebaseExtractor.js  // Codebase analysis logic
+├── jsconfig.json         // JS compiler configuration
+├── package.json          // Extension metadata and dependencies
+├── python/               // Python scripts
+│   ├── app.py            // Main Python script for README generation
+│   ├── requirements.txt  // Python dependencies
+│   └── test_gemini_embeddings.py // Script to test Gemini embeddings setup
+└── test/                  // Test files (for extension development)
     └── ...
 ```
 
-## API Documentation (Python Backend)
+## API Documentation
 
-The Python backend (`app.py`) exposes a single function, `process_pdf`, which takes the path to a PDF file as input and returns a JSON object containing the generated README content and other statistics.  It uses command-line arguments for flexibility.
+There are no REST endpoints or public APIs exposed by this project.  The interaction is solely through the VS Code extension.
 
 ## Configuration
 
-The extension requires a `GOOGLE_API_KEY` environment variable.  You can set this in your system's environment variables or in a `.env` file in the `python` directory.  The example in `extension.js` shows how to set it directly in the code for testing purposes.  **Do not commit your actual API key to version control.**
+The primary configuration is the Google Cloud API key, which should be set as an environment variable: `GOOGLE_API_KEY` or in VS Code settings as `codeSummaryGenerator.apiKey`.
 
-## Contributing
+## Development Setup
 
-Contributions are welcome! Please open an issue or submit a pull request.  Ensure your code follows the style guidelines and includes comprehensive tests.
+1. Clone the repository.
+2. Install Node.js and npm.
+3. Run `npm install` to install the extension dependencies.
+4. Run `pip install -r python/requirements.txt` to install Python dependencies.
+5. Set your Google Cloud API key as described above.
+6. Open the project in VS Code.
+7. Press F5 to start debugging the extension.
+
+This README was automatically generated using the codebase analysis functionality of this project.
