@@ -1,0 +1,228 @@
+{
+  "rootDirectory": "c:\\Users\\sarth\\OneDrive\\Desktop\\private\\extension-test",
+  "timestamp": "2026-07-27T19:52:16.831Z",
+  "files": [
+    {
+      "path": ".eslintrc.json",
+      "absolutePath": "c:\\Users\\sarth\\OneDrive\\Desktop\\private\\extension-test\\.eslintrc.json",
+      "name": ".eslintrc.json",
+      "extension": ".json",
+      "size": 429,
+      "created": "2025-08-08T05:36:33.429Z",
+      "modified": "2025-07-24T14:11:27.587Z",
+      "content": "{\n\t\"env\": {\n\t\t\"browser\": false,\n\t\t\"commonjs\": true,\n\t\t\"es6\": true,\n\t\t\"node\": true,\n\t\t\"mocha\": true\n\t},\n\t\"parserOptions\": {\n\t\t\"ecmaVersion\": 2018,\n\t\t\"ecmaFeatures\": {\n\t\t\t\"jsx\": true\n\t\t},\n\t\t\"sourceType\": \"module\"\n\t},\n\t\"rules\": {\n\t\t\"no-const-assign\": \"warn\",\n\t\t\"no-this-before-super\": \"warn\",\n\t\t\"no-undef\": \"warn\",\n\t\t\"no-unreachable\": \"warn\",\n\t\t\"no-unused-vars\": \"warn\",\n\t\t\"constructor-super\": \"warn\",\n\t\t\"valid-typeof\": \"warn\"\n\t}\n}\n",
+      "lines": 26,
+      "isText": true
+    },
+    {
+      "path": ".gitignore",
+      "absolutePath": "c:\\Users\\sarth\\OneDrive\\Desktop\\private\\extension-test\\.gitignore",
+      "name": ".gitignore",
+      "extension": "",
+      "size": 155,
+      "created": "2025-08-08T05:36:33.445Z",
+      "modified": "2025-08-05T19:06:28.240Z",
+      "content": ".vscode/\r\n.vscode-test/\r\ntest/\r\n**/node_modules/\r\npython/venv/\r\n**/__pycache__/\r\n**/*.log\r\n**/*.map\r\n.env\r\n**/.env\r\n*.pyc\r\n.DS_Store\r\n**/*.md\r\n!README.md\r\n",
+      "lines": 15,
+      "isText": false
+    },
+    {
+      "path": ".vscodeignore",
+      "absolutePath": "c:\\Users\\sarth\\OneDrive\\Desktop\\private\\extension-test\\.vscodeignore",
+      "name": ".vscodeignore",
+      "extension": "",
+      "size": 319,
+      "created": "2025-08-08T05:36:33.453Z",
+      "modified": "2025-08-07T20:54:45.943Z",
+      "content": ".vscode/**\n.vscode-test/**\ntest/**\n.gitignore\n.yarnrc\nvsc-extension-quickstart.md\n**/jsconfig.json\n**/*.map\n**/*.ts\n**/.eslintrc.json\n**/.env\n**/*.log\n# **/node_modules/**\n# !node_modules/jspdf/**\n# !node_modules/fflate/**\n# !node_modules/dotenv/**\n**/*.tmp\n**/*.temp\n**/venv/**\n**/dist/**\n**/out/**\n.DS_Store\nThumbs.db",
+      "lines": 23,
+      "isText": false
+    },
+    {
+      "path": "codebaseExtractor.js",
+      "absolutePath": "c:\\Users\\sarth\\OneDrive\\Desktop\\private\\extension-test\\codebaseExtractor.js",
+      "name": "codebaseExtractor.js",
+      "extension": ".js",
+      "size": 5281,
+      "created": "2025-08-08T05:36:33.461Z",
+      "modified": "2025-09-22T11:46:45.583Z",
+      "content": "const fs = require('fs');\r\nconst path = require('path');\r\nconst { spawn } = require('child_process');\r\n\r\nclass CodebaseExtractor {\r\n    constructor(rootPath) {\r\n        this.rootPath = path.resolve(rootPath);\r\n        this.data = {\r\n            rootDirectory: this.rootPath,\r\n            timestamp: new Date().toISOString(),\r\n            files: [],\r\n            directories: [],\r\n            summary: {\r\n                totalFiles: 0,\r\n                totalDirectories: 0,\r\n                totalSize: 0,\r\n                fileTypes: {}\r\n            }\r\n        };\r\n        this.ignorePatterns = [\r\n            'node_modules',\r\n            '.git',\r\n            '.vscode',\r\n            'dist',\r\n            'build',\r\n            '.env',\r\n            '*.log',\r\n            '.DS_Store',\r\n            'Thumbs.db',\r\n            'codesummary.json',\r\n            'README.md',\r\n            'package-lock.json',\r\n            'venv',\r\n            '.venv',\r\n            '__pycache__',\r\n            '*.pyc',\r\n            '*.pyo',\r\n            '.pytest_cache',\r\n            '.mypy_cache',\r\n            '.tox',\r\n        ];\r\n    }\r\n\r\n    shouldIgnore(filePath) {\r\n        const fileName = path.basename(filePath);\r\n        return this.ignorePatterns.some(pattern => {\r\n            if (pattern.includes('*')) {\r\n                const regex = new RegExp(pattern.replace('*', '.*'));\r\n                return regex.test(fileName);\r\n            }\r\n            return fileName === pattern;\r\n        });\r\n    }\r\n\r\n    getFileExtension(filePath) {\r\n        return path.extname(filePath).toLowerCase();\r\n    }\r\n\r\n    readFileContent(filePath) {\r\n        try {\r\n            const content = fs.readFileSync(filePath, 'utf8');\r\n            return content;\r\n        } catch (error) {\r\n            return `[Binary file or read error: ${error.message}]`;\r\n        }\r\n    }\r\n\r\n    getFileStats(filePath) {\r\n        try {\r\n            return fs.statSync(filePath);\r\n        } catch (error) {\r\n            return null;\r\n        }\r\n    }\r\n\r\n    processFile(filePath, relativePath) {\r\n        const stats = this.getFileStats(filePath);\r\n        if (!stats) return;\r\n        const extension = this.getFileExtension(filePath);\r\n        const content = this.readFileContent(filePath);\r\n        const fileData = {\r\n            path: relativePath,\r\n            absolutePath: filePath,\r\n            name: path.basename(filePath),\r\n            extension,\r\n            size: stats.size,\r\n            created: stats.birthtime,\r\n            modified: stats.mtime,\r\n            content,\r\n            lines: typeof content === 'string' ? content.split('\\n').length : 0,\r\n            isText: this.isTextFile(extension)\r\n        };\r\n        this.data.files.push(fileData);\r\n        this.data.summary.totalFiles++;\r\n        this.data.summary.totalSize += stats.size;\r\n        const ext = extension || 'no-extension';\r\n        this.data.summary.fileTypes[ext] = (this.data.summary.fileTypes[ext] || 0) + 1;\r\n    }\r\n\r\n    isTextFile(extension) {\r\n        const textExtensions = [\r\n            '.js', '.jsx', '.ts', '.tsx', '.json', '.html', '.css', '.scss',\r\n            '.md', '.txt', '.xml', '.yml', '.yaml', '.py', '.java', '.c',\r\n            '.cpp', '.h', '.php', '.rb', '.go', '.rs', '.swift', '.kt',\r\n            '.sql', '.sh', '.bat', '.ps1', '.vue', '.svelte', '.conf',\r\n            '.ini', '.cfg', '.env', '.gitignore', '.gitattributes'\r\n        ];\r\n        return textExtensions.includes(extension);\r\n    }\r\n\r\n    processDirectory(dirPath, relativePath = '') {\r\n        try {\r\n            const items = fs.readdirSync(dirPath);\r\n            if (relativePath) {\r\n                this.data.directories.push({\r\n                    path: relativePath,\r\n                    absolutePath: dirPath,\r\n                    name: path.basename(dirPath)\r\n                });\r\n                this.data.summary.totalDirectories++;\r\n            }\r\n            for (const item of items) {\r\n                const itemPath = path.join(dirPath, item);\r\n                const relativeItemPath = relativePath ? path.join(relativePath, item) : item;\r\n                if (this.shouldIgnore(itemPath)) continue;\r\n                const stats = this.getFileStats(itemPath);\r\n                if (!stats) continue;\r\n                if (stats.isDirectory()) {\r\n                    this.processDirectory(itemPath, relativeItemPath);\r\n                } else if (stats.isFile()) {\r\n                    this.processFile(itemPath, relativeItemPath);\r\n                }\r\n            }\r\n        } catch (error) {\r\n            console.error(`Error processing directory ${dirPath}:`, error.message);\r\n        }\r\n    }\r\n\r\n    extract() {\r\n        if (!fs.existsSync(this.rootPath)) {\r\n            throw new Error(`Directory does not exist: ${this.rootPath}`);\r\n        }\r\n        this.processDirectory(this.rootPath);\r\n        this.data.files.sort((a, b) => a.path.localeCompare(b.path));\r\n        this.data.directories.sort((a, b) => a.path.localeCompare(b.path));\r\n        return this.data;\r\n    }\r\n\r\n    saveToFile(outputPath = 'codebase-data.json') {\r\n        const outputFile = path.resolve(outputPath);\r\n        fs.writeFileSync(outputFile, JSON.stringify(this.data, null, 2));\r\n        return outputFile;\r\n    }\r\n}\r\n\r\nmodule.exports = { CodebaseExtractor };",
+      "lines": 156,
+      "isText": true
+    },
+    {
+      "path": "extension.js",
+      "absolutePath": "c:\\Users\\sarth\\OneDrive\\Desktop\\private\\extension-test\\extension.js",
+      "name": "extension.js",
+      "extension": ".js",
+      "size": 4669,
+      "created": "2025-08-08T05:36:33.467Z",
+      "modified": "2026-07-27T19:25:40.278Z",
+      "content": "const vscode = require('vscode');\nconst path = require('path');\nconst fs = require('fs');\nconst { spawn } = require('child_process');\nconst config = vscode.workspace.getConfiguration('codeSummaryGenerator');\nconst apiKey = config.get('apiKey');\nconst { CodebaseExtractor } = require('./codebaseExtractor');\n\nasync function generateReadmeFromJSON(jsonPath, extensionPath) {\n  const pythonScriptPath = path.join(extensionPath, 'python', 'app.py');\n\n  if (!fs.existsSync(pythonScriptPath)) {\n    console.warn(`Python script not found at: ${pythonScriptPath}, will skip AI generation`);\n    return \"# Auto-generated README\\n\\nThis README was generated from the codebase analysis. Python AI script was not available./Your computers python is not responding, please check your python installation and ensure it's in your PATH.\";\n  }\n  if (!apiKey) {\n    throw new Error('API key not found in VS Code settings. Please set codeSummaryGenerator.apiKey in your Open User Settings.');\n  }\n  const pythonCommands = [\n    'py',\n    'C:\\\\Users\\\\sarth\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python312\\\\python.exe',\n    'python',\n    'python3'\n  ];\n  for (const pythonCmd of pythonCommands) {\n    try {\n      const result = await tryPythonCommand(pythonCmd, pythonScriptPath, jsonPath);\n      if (result) return result;\n    } catch (error) {\n      continue;\n    }\n  }\n  console.warn('Python not found, using fallback content');\n  return \"# Auto-generated README\\n\\nThis README was generated from the codebase analysis. Python was not available for AI generation.\";\n}\n\nfunction tryPythonCommand(pythonCmd, pythonScriptPath, jsonPath) {\n  return new Promise((resolve, reject) => {\n    const pythonProcess = spawn(pythonCmd, [pythonScriptPath, jsonPath, '--json'], {\n      env: {\n        ...process.env,\n        'codeSummaryGenerator.apiKey': apiKey\n      }\n    });\n\n    let stdout = '';\n\n    pythonProcess.stdout.on('data', (data) => {\n      stdout += data.toString();\n    });\n\n    pythonProcess.on('close', (code) => {\n      if (code === 0 && stdout.trim()) {\n        resolve(stdout.trim());\n      } else {\n        reject(new Error(`Python process failed with code ${code}`));\n      }\n    });\n\n    pythonProcess.on('error', (error) => {\n      reject(error);\n    });\n  });\n}\n\nasync function generateCodeSummary(extensionPath) {\n  const folders = vscode.workspace.workspaceFolders;\n  if (!folders || folders.length === 0) {\n    throw new Error('No folder is open in VS Code.');\n  }\n  const folderPath = folders[0].uri.fsPath;\n  const extractor = new CodebaseExtractor(folderPath);\n  extractor.extract();\n  const jsonPath = path.join(folderPath, 'codesummary.json');\n  extractor.saveToFile(jsonPath);\n  if (!fs.existsSync(jsonPath)) {\n    throw new Error(`JSON was not created at: ${jsonPath}`);\n  }\n  const readmeContent = await generateReadmeFromJSON(jsonPath, extensionPath);\n  const readmePath = path.join(folderPath, 'README.md');\n  const header = `<!-- Auto-generated README using AI RAG -->\\n<!-- Generated on: ${new Date().toISOString()} -->\\n\\n`;\n  // fs.writeFileSync(filePath, content, encoding); this is the basic writefilesync structure\n  fs.writeFileSync(readmePath, header + readmeContent, 'utf8');\n  return { readmePath, jsonPath };\n}\n\nfunction activate(context) {\n  const disposable = vscode.commands.registerCommand('extension.generateCodeSummary', async () => {\n    try {\n      await vscode.window.withProgress({\n        location: vscode.ProgressLocation.Notification,\n        title: \"Generating README with AI\",\n        cancellable: false\n      }, async (progress, token) => {\n        progress.report({ increment: 0, message: \"Starting process...\" });\n        const result = await generateCodeSummary(context.extensionPath);\n        progress.report({ increment: 100, message: \"Complete!\" });\n        const choice = await vscode.window.showInformationMessage(\n          `README generated successfully!`,\n          'Open README',\n          'Open JSON'\n        );\n        if (choice === 'Open README') {\n          const document = await vscode.workspace.openTextDocument(result.readmePath);\n          await vscode.window.showTextDocument(document);\n        } else if (choice === 'Open JSON') {\n          const document = await vscode.workspace.openTextDocument(result.jsonPath);\n          await vscode.window.showTextDocument(document);\n        }\n      });\n    } catch (error) {\n      console.error('Extension error:', error);\n      vscode.window.showErrorMessage(`Failed: ${error.message}`);\n    }\n  });\n  context.subscriptions.push(disposable);\n}\n\nfunction deactivate() {\n  console.log('README Generator Extension deactivated');\n}\n\nmodule.exports = { activate, deactivate };",
+      "lines": 123,
+      "isText": true
+    },
+    {
+      "path": "index.html",
+      "absolutePath": "c:\\Users\\sarth\\OneDrive\\Desktop\\private\\extension-test\\index.html",
+      "name": "index.html",
+      "extension": ".html",
+      "size": 401,
+      "created": "2025-09-12T07:07:19.828Z",
+      "modified": "2025-09-15T14:38:16.414Z",
+      "content": "<!DOCTYPE html>\r\n<html lang=\"en\">\r\n<head>\r\n    <meta charset=\"UTF-8\">\r\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\r\n    <title>Document</title>\r\n</head>\r\n<body>\r\n    <h1 id=\"count\">Counter : 0</h1>\r\n    <button id=\"increment\">increment counter</button>\r\n    <button id=\"decrement\">decrement counter</button>\r\n    \r\n    <script src=\"./temp.js\"></script>\r\n</body>\r\n</html>",
+      "lines": 15,
+      "isText": true
+    },
+    {
+      "path": "jsconfig.json",
+      "absolutePath": "c:\\Users\\sarth\\OneDrive\\Desktop\\private\\extension-test\\jsconfig.json",
+      "name": "jsconfig.json",
+      "extension": ".json",
+      "size": 185,
+      "created": "2025-08-08T05:36:33.477Z",
+      "modified": "2025-07-24T14:11:27.577Z",
+      "content": "{\n\t\"compilerOptions\": {\n\t\t\"module\": \"commonjs\",\n\t\t\"target\": \"ES2020\",\n\t\t\"checkJs\": false,  /* Typecheck .js files. */\n\t\t\"lib\": [\n\t\t\t\"ES2020\"\n\t\t]\n\t},\n\t\"exclude\": [\n\t\t\"node_modules\"\n\t]\n}\n",
+      "lines": 14,
+      "isText": true
+    },
+    {
+      "path": "LICENSE",
+      "absolutePath": "c:\\Users\\sarth\\OneDrive\\Desktop\\private\\extension-test\\LICENSE",
+      "name": "LICENSE",
+      "extension": "",
+      "size": 1103,
+      "created": "2025-08-08T05:36:33.486Z",
+      "modified": "2025-08-24T16:44:05.420Z",
+      "content": "MIT License\r\n\r\nCopyright (c) 2025 Sarthak Bhatnagar\r\n\r\nPermission is hereby granted, free of charge, to any person obtaining a copy\r\nof this software and associated documentation files (the “Software”), to deal\r\nin the Software without restriction, including without limitation the rights\r\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\r\ncopies of the Software, and to permit persons to whom the Software is\r\nfurnished to do so, subject to the following conditions:\r\n\r\nThe above copyright notice and this permission notice shall be included in\r\nall copies or substantial portions of the Software.\r\n\r\nTHE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\r\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\r\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\r\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\r\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\r\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN\r\nTHE SOFTWARE.\r\n",
+      "lines": 22,
+      "isText": false
+    },
+    {
+      "path": "package.json",
+      "absolutePath": "c:\\Users\\sarth\\OneDrive\\Desktop\\private\\extension-test\\package.json",
+      "name": "package.json",
+      "extension": ".json",
+      "size": 1356,
+      "created": "2025-08-08T05:36:33.495Z",
+      "modified": "2025-08-08T16:33:18.513Z",
+      "content": "{\n  \"name\": \"code-summary-generator\",\n  \"displayName\": \"Code Summary Generator\",\n  \"publisher\": \"SarthakBhatnagar30\",\n  \"description\": \"Generates a JSON and PDF summary of a codebase using AI.\",\n  \"version\": \"0.0.9\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"https://github.com/SarthakBhatnagar30/code-summary-generator.git\"\n  },\n  \"engines\": {\n    \"vscode\": \"^1.80.0\"\n  },\n  \"categories\": [\n    \"Other\"\n  ],\n  \"activationEvents\": [\n    \"onCommand:extension.generateCodeSummary\"\n  ],\n  \"main\": \"./extension.js\",\n  \"contributes\": {\n    \"commands\": [\n      {\n        \"command\": \"extension.generateCodeSummary\",\n        \"title\": \"Generate Code Summary\",\n        \"category\": \"Code Summary\"\n      }\n    ],\n    \"menus\": {\n      \"commandPalette\": [\n        {\n          \"command\": \"extension.generateCodeSummary\",\n          \"when\": \"workspaceFolderCount > 0\"\n        }\n      ]\n    }\n  },\n  \"scripts\": {\n    \"lint\": \"eslint .\",\n    \"pretest\": \"npm run lint\",\n    \"test\": \"node ./test/runTest.js\"\n  },\n  \"devDependencies\": {\n    \"@types/glob\": \"^8.0.0\",\n    \"@types/mocha\": \"^10.0.0\",\n    \"@types/node\": \"16.x\",\n    \"@types/vscode\": \"^1.80.0\",\n    \"@vscode/test-electron\": \"^2.1.5\",\n    \"eslint\": \"^8.24.0\",\n    \"glob\": \"^8.0.3\",\n    \"mocha\": \"^10.0.0\",\n    \"typescript\": \"^4.8.4\"\n  },\n  \"dependencies\": {\n    \"dotenv\": \"^17.2.1\",\n    \"jspdf\": \"^3.0.1\"\n  }\n}\n",
+      "lines": 59,
+      "isText": true
+    },
+    {
+      "path": "python\\app.py",
+      "absolutePath": "c:\\Users\\sarth\\OneDrive\\Desktop\\private\\extension-test\\python\\app.py",
+      "name": "app.py",
+      "extension": ".py",
+      "size": 9906,
+      "created": "2025-08-08T05:35:02.972Z",
+      "modified": "2026-07-27T19:52:14.372Z",
+      "content": "import os\r\nimport sys\r\nimport json\r\nimport re\r\nfrom typing import Dict, Any, List\r\nfrom langchain_text_splitters import RecursiveCharacterTextSplitter\r\nimport google.generativeai as genai\r\nfrom langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI\r\nfrom langchain_community.vectorstores import FAISS\r\nfrom langchain.chains.combine_documents import create_stuff_documents_chain\r\nfrom langchain_core.prompts import ChatPromptTemplate\r\nfrom langchain.schema import Document\r\n\r\nclass AdvancedReadmeGenerator:\r\n    def __init__(self):\r\n        self.vector_store = None\r\n        self.embeddings = None\r\n        self.setup_api_key()\r\n        self.setup_gemini()\r\n\r\n    def setup_api_key(self):\r\n        self.api_key = os.environ.get('codeSummaryGenerator.apiKey')\r\n        if not self.api_key:\r\n            raise ValueError(\"API_KEY not found in environment variables.\")\r\n\r\n    def setup_gemini(self):\r\n        try:\r\n            genai.configure(api_key=self.api_key)\r\n            self.embeddings = GoogleGenerativeAIEmbeddings(\r\n                model=\"models/text-embedding-004\",\r\n                google_api_key=self.api_key\r\n            )\r\n            self.chat_model = ChatGoogleGenerativeAI(\r\n                model=\"gemini-2.0-flash\",\r\n                temperature=0.3,\r\n                google_api_key=self.api_key\r\n            )\r\n        except Exception as e:\r\n            raise Exception(f\"Failed to configure Gemini API: {str(e)}\")\r\n\r\n    def load_codebase_json(self, json_path: str) -> str:\r\n        try:\r\n            with open(json_path, 'r', encoding='utf-8') as file:\r\n                codebase_data = json.load(file)\r\n            return self.format_codebase_data(codebase_data)\r\n        except FileNotFoundError:\r\n            raise Exception(f\"Codebase JSON file not found: {json_path}\")\r\n        except Exception as e:\r\n            raise Exception(f\"Error reading codebase JSON: {str(e)}\")\r\n\r\n    def format_codebase_data(self, codebase_data: Dict) -> str:\r\n        sections = []\r\n        for key in ['projectName', 'description']:\r\n            if key in codebase_data:\r\n                label = \"PROJECT\" if key == 'projectName' else key.upper()\r\n                sections.append(f\"=== {label}: {codebase_data[key]} ===\")\r\n        if 'packageJson' in codebase_data:\r\n            sections.append(\"=== PACKAGE.JSON ===\")\r\n            sections.append(json.dumps(codebase_data['packageJson'], indent=2))\r\n        if 'structure' in codebase_data:\r\n            sections.append(\"=== STRUCTURE ===\")\r\n            sections.append(json.dumps(codebase_data['structure'], indent=2))\r\n\r\n        # NOTE: CodebaseExtractor (JS) outputs 'files' as a LIST of objects\r\n        # (each with 'path' / 'content' keys), not a dict. Handle both shapes\r\n        # so this works regardless of which extractor version produced the JSON.\r\n        if 'files' in codebase_data:\r\n            sections.append(\"=== FILES ===\")\r\n            files = codebase_data['files']\r\n            if isinstance(files, dict):\r\n                for file_path, file_content in files.items():\r\n                    sections.append(f\"--- {file_path} ---\")\r\n                    if isinstance(file_content, dict) and 'content' in file_content:\r\n                        sections.append(file_content['content'])\r\n                    else:\r\n                        sections.append(str(file_content))\r\n            elif isinstance(files, list):\r\n                for file_entry in files:\r\n                    file_path = file_entry.get('path', file_entry.get('name', 'unknown'))\r\n                    sections.append(f\"--- {file_path} ---\")\r\n                    if file_entry.get('isText', True):\r\n                        sections.append(str(file_entry.get('content', '')))\r\n                    else:\r\n                        sections.append('[binary file omitted]')\r\n\r\n        config_keys = ['tsconfig', 'webpack', 'vite', 'eslint', 'prettier']\r\n        for config in config_keys:\r\n            if config in codebase_data:\r\n                sections.append(f\"=== {config.upper()} ===\")\r\n                sections.append(json.dumps(codebase_data[config], indent=2))\r\n        return \"\\n\".join(sections)\r\n\r\n    def get_text_chunks(self, text: str) -> List[str]:\r\n        text_splitter = RecursiveCharacterTextSplitter(\r\n            chunk_size=10000,\r\n            chunk_overlap=1000,\r\n            length_function=len,\r\n            separators=[\"\\n=== \", \"\\n--- FILE:\", \"\\n---\", \"\\n\\n\", \"\\n\", \" \", \"\"]\r\n        )\r\n        return text_splitter.split_text(text)\r\n\r\n    def create_vector_store(self, text_chunks: List[str]) -> bool:\r\n        try:\r\n            documents = [Document(page_content=chunk) for chunk in text_chunks]\r\n            self.vector_store = FAISS.from_documents(documents, self.embeddings)\r\n            return True\r\n        except Exception as e:\r\n            print(f\"Failed to create vector store: {e}\", file=sys.stderr)\r\n            return False\r\n\r\n    def get_conversational_chain(self):\r\n        readme_prompt_template = \"\"\"\r\n        You are an expert software developer and technical writer. Based on the provided codebase context, generate a comprehensive and professional README.md file.\r\n\r\n        Analyze the code context carefully and create a README that includes:\r\n        1. **Project Title** - Infer from the codebase structure, package.json, or main files\r\n        2. **Description** - Clear overview of what the project does based on the actual code\r\n        3. **Features** - Key functionality identified from the source code analysis\r\n        4. **Technology Stack** - Languages, frameworks, libraries, and tools used (be specific)\r\n        5. **Workflow** - End-to-end process flow of the application\r\n        6. **Installation** - Step-by-step setup instructions based on detected dependencies\r\n        7. **Usage** - How to run/use the project with code examples where appropriate\r\n        8. **Project Structure** - Overview of important directories and files\r\n        9. **API Documentation** - If REST endpoints or APIs are detected\r\n        10. **Configuration** - Environment variables, config files, or settings found\r\n\r\n        **Guidelines:**\r\n        - Be specific and accurate based on the actual code provided\r\n        - Use proper markdown formatting with headers, code blocks, and lists\r\n        - Include actual code examples from the codebase when relevant\r\n        - Make installation instructions specific to the detected package managers\r\n        - Focus on what the code actually does, not generic descriptions\r\n        - Make it professional and comprehensive enough for other developers\r\n\r\n        Code context:\r\n        {context}\r\n\r\n        Question: {input}\r\n\r\n        Generated README.md:\r\n        \"\"\"\r\n        prompt = ChatPromptTemplate.from_template(readme_prompt_template)\r\n        return create_stuff_documents_chain(self.chat_model, prompt)\r\n\r\n    def generate_readme(self, json_path: str) -> Dict[str, Any]:\r\n        try:\r\n            formatted_content = self.load_codebase_json(json_path)\r\n            text_chunks = self.get_text_chunks(formatted_content)\r\n            if not self.create_vector_store(text_chunks):\r\n                raise Exception(\"Failed to create vector store\")\r\n            readme_question = \"\"\"\r\n            Analyze this codebase comprehensively and generate a detailed README.md file covering:\r\n            - Project purpose and main functionality\r\n            - Technologies and frameworks used\r\n            - Installation and setup procedures\r\n            - Usage instructions with examples\r\n            - Project structure and important files\r\n            - APIs or endpoints if applicable\r\n            - Configuration requirements\r\n            - System workflow and how components work together\r\n\r\n            Focus on actual code behavior rather than generic descriptions.\r\n            \"\"\"\r\n            relevant_docs = self.vector_store.similarity_search(readme_question, k=10)\r\n            chain = self.get_conversational_chain()\r\n            response = chain.invoke({\"context\": relevant_docs, \"input\": readme_question})\r\n            readme_content = response.strip()\r\n            if not readme_content:\r\n                raise Exception(\"Empty response from AI\")\r\n            readme_content = self.post_process_readme(readme_content)\r\n            return {\r\n                \"success\": True,\r\n                \"content\": readme_content,\r\n                \"message\": \"README generated successfully\",\r\n                \"stats\": {\r\n                    \"chunks_created\": len(text_chunks),\r\n                    \"readme_length\": len(readme_content)\r\n                }\r\n            }\r\n        except Exception as e:\r\n            return {\r\n                \"success\": False,\r\n                \"content\": None,\r\n                \"message\": str(e)\r\n            }\r\n\r\n    def post_process_readme(self, content: str) -> str:\r\n        content = content.strip()\r\n        content = re.sub(r'\\n{3,}', '\\n\\n', content)\r\n        return content\r\n\r\ndef main():\r\n    # extension.js calls: python app.py <jsonPath> --json\r\n    # and reads the README content from stdout. Wire that up here instead\r\n    # of hardcoding the path and writing straight to a local file.\r\n    if len(sys.argv) < 2:\r\n        print(\"Error: no JSON path provided\", file=sys.stderr)\r\n        sys.exit(1)\r\n\r\n    json_path = sys.argv[1]\r\n\r\n    try:\r\n        generator = AdvancedReadmeGenerator()\r\n        result = generator.generate_readme(json_path)\r\n        if result[\"success\"]:\r\n            # Print ONLY the README content to stdout — extension.js captures\r\n            # this directly, it does not read a file.\r\n            print(result[\"content\"])\r\n        else:\r\n            print(f\"Error: {result['message']}\", file=sys.stderr)\r\n            sys.exit(1)\r\n    except Exception as e:\r\n        print(f\"Error: {str(e)}\", file=sys.stderr)\r\n        sys.exit(1)\r\n\r\nif __name__ == \"__main__\":\r\n    main()",
+      "lines": 217,
+      "isText": true
+    },
+    {
+      "path": "python\\requirements.txt",
+      "absolutePath": "c:\\Users\\sarth\\OneDrive\\Desktop\\private\\extension-test\\python\\requirements.txt",
+      "name": "requirements.txt",
+      "extension": ".txt",
+      "size": 125,
+      "created": "2025-08-08T05:35:02.974Z",
+      "modified": "2025-09-17T17:32:54.408Z",
+      "content": "# PyPDF2\r\ngoogle-generativeai\r\nlangchain\r\nlangchain-google-genai\r\nlangchain-community\r\nfaiss-cpu\r\n# python-dotenv\r\n# tiktoken",
+      "lines": 8,
+      "isText": true
+    },
+    {
+      "path": "python\\test_gemini_embeddings.py",
+      "absolutePath": "c:\\Users\\sarth\\OneDrive\\Desktop\\private\\extension-test\\python\\test_gemini_embeddings.py",
+      "name": "test_gemini_embeddings.py",
+      "extension": ".py",
+      "size": 1368,
+      "created": "2025-08-08T05:35:02.979Z",
+      "modified": "2025-09-10T06:06:12.361Z",
+      "content": "import os\r\nimport sys\r\nimport google.generativeai as genai\r\nfrom langchain_google_genai import GoogleGenerativeAIEmbeddings\r\n\r\ndef main():\r\n    api_key = os.getenv(\"GOOGLE_API_KEY\")\r\n    if not api_key:\r\n        print(\"❌ GOOGLE_API_KEY not found in environment variables or .env file.\")\r\n        sys.exit(1)\r\n\r\n    print(f\"✅ API Key loaded. Length: {len(api_key)}\")\r\n\r\n    try:\r\n        genai.configure(api_key=api_key)\r\n        print(\"✅ Gemini API configured.\")\r\n\r\n        # Try default embeddings initialization (no model specified)\r\n        embeddings = GoogleGenerativeAIEmbeddings()\r\n        print(f\"Embeddings object: {embeddings}\")\r\n\r\n        if embeddings is None:\r\n            print(\"❌ Embeddings initialization failed: received None\")\r\n            sys.exit(1)\r\n        else:\r\n            # Check if 'embed_documents' attribute exists\r\n            if hasattr(embeddings, 'embed_documents'):\r\n                print(\"✅ 'embed_documents' method found on embeddings object.\")\r\n            else:\r\n                print(\"❌ 'embed_documents' method NOT found on embeddings object.\")\r\n                sys.exit(1)\r\n\r\n        print(\"🎉 Embeddings initialized successfully. Your setup looks correct.\")\r\n    except Exception as e:\r\n        print(f\"❌ Exception during embeddings setup: {e}\")\r\n        sys.exit(1)\r\n\r\nif __name__ == \"__main__\":\r\n    main()\r\n",
+      "lines": 40,
+      "isText": true
+    },
+    {
+      "path": "temp.js",
+      "absolutePath": "c:\\Users\\sarth\\OneDrive\\Desktop\\private\\extension-test\\temp.js",
+      "name": "temp.js",
+      "extension": ".js",
+      "size": 6898,
+      "created": "2025-09-10T09:21:46.800Z",
+      "modified": "2025-09-29T06:55:06.203Z",
+      "content": "// const products = [\r\n//   {id: 1, name: \"Apple\", price: 120, category: \"fruits\", quantity: 2},\r\n//   {id: 2, name: \"Milk\", price: 60, category: \"dairy\", quantity: 1},\r\n//   {id: 3, name: \"Bread\", price: 40, category: \"fruits\", quantity: 3},\r\n//   {id: 4, name: \"Banana\", price: 80, category: \"fruits\", quantity: 5},\r\n//   {id: 5, name: \"Cheese\", price: 200, category: \"dairy\", quantity: 1},\r\n//   {id: 6, name: \"Cookies\", price: 150, category: \"dairy\", quantity: 2}\r\n// ];\r\n\r\n// function groupBy(products,cat){\r\n//     return products.reduce((groups,item)=>{\r\n//         const group = item[cat];\r\n//         groups[group] = groups[group] || [];\r\n//         groups[group].push(item);\r\n//         return groups;\r\n//     },{})\r\n// }\r\n// let result = groupBy(products,'category');\r\n// console.log(result);\r\n\r\n// const prices = products.filter(e=> e.price<120);\r\n// console.log(prices);\r\n\r\n// let filtering = products.find(e=> e.name === 'Apple');\r\n\r\n\r\n// let sum = products.reduce((prev,curr)=>{\r\n//     return prev+curr.price;\r\n// },0); \r\n// console.log(sum)\r\n\r\n\r\n// const show = document.getElementById('count')\r\n// let counter = 0;\r\n// document.getElementById('increment').addEventListener('click',function(){\r\n//         counter++;\r\n//         show.textContent = `Counter : ${counter}`\r\n//     })\r\n// document.getElementById('decrement').addEventListener('click',function(){\r\n//         counter--;\r\n//         show.textContent = `Counter : ${counter}`\r\n//     })\r\n\r\n\r\n// function total(cartitems){\r\n//     return cartitems.reduce((prev,curr)=>{\r\n//         return prev + curr;\r\n//     },0)\r\n// }\r\n\r\n// TWOSUM\r\n\r\n// const numbers = [9, 6, 4, 2, 3, 5, 7, 0, 1];\r\n// numbers.sort((a,b)=> a-b);\r\n// function sorting(target,numbers){\r\n//     let first = 0;\r\n//     let second = numbers.length-1;\r\n//     while(first<=second){\r\n//         let sum = numbers[first]+numbers[second];\r\n//         if(sum==target){\r\n//             return [numbers[first],numbers[second]];\r\n//         }else if(sum>target){\r\n//             second--;\r\n//         }else{\r\n//             first++;\r\n//         }\r\n//     }\r\n//     return [-1,-1];\r\n// }\r\n// const result = sorting(13,numbers);\r\n// console.log(result);\r\n\r\n\r\n// const fruits = [\"apple\", \"banana\", \"apple\", \"orange\", \"banana\"];\r\n\r\n// console.log(Math.max(...fruits));\r\n\r\n\r\n// function filering(cat) {\r\n//     return products.filter(ele=> ele.category===cat);\r\n// }\r\n// const filter = products.filter(e=>e.category===\"fruit\")\r\n// console.log(filter);\r\n\r\n\r\n// for (var i = 0; i < 3; i++) {\r\n//     (function(j){\r\n//         setTimeout(() => console.log(j), 100);\r\n//     })(i);\r\n// }\r\n\r\n// const obj = {\r\n//   name: \"blinkit\",\r\n//   getName: function() { return this.name; },\r\n//   getNameArrow: () => { return this.name; }\r\n// }\r\n// console.log(obj.getName());\r\n// console.log(obj.getNameArrow());\r\n\r\n// function addf(x){\r\n//     return (y) => x+y;\r\n// }\r\n// let c = addf(5);\r\n// console.log(c(10));\r\n// console.log(c(5));\r\n\r\n// function check(x){\r\n//     return x%1==0 ? true : false;\r\n// }\r\n\r\n// console.log(check(12.2));\r\n\r\n\r\n// return function (){\r\n//     console.log(\"hello sarhtka\")\r\n// }\r\n\r\n// CALLBACK\r\n// function print(abc){\r\n//     abc();\r\n// }\r\n// function abc(){\r\n//     console.log(\"My name is sarthak\");\r\n// }\r\n// print(abc)\r\n\r\n// const result = duplicates(arr);\r\n// console.log(result)\r\n\r\n// let str = \"My name is sarthak\"\r\n// function search(substr){\r\n//         return str.split('').filter(e=>e===substr)\r\n//     }\r\n\r\n//     const result = search('sa');\r\n//     console.log(result);\r\n\r\n// const arr = [7, 2, 3, 0, 4, 5, 1];\r\n// function findmissing(arr){\r\n//     let n = arr.length;\r\n//     let expsum = n * (n+1) /2;\r\n//     let actualsum = arr.reduce((prev,curr)=>{\r\n//         return prev+curr;\r\n//     },0)\r\n//     return expsum - actualsum;\r\n// }\r\n// const result = findmissing(arr);\r\n// console.log(result);\r\n\r\n\r\n// REVERSE\r\n// let str= \"Sarthak\";\r\n// function reverse(string){\r\n//     return string.split('').reverse().join('').split(' ').reverse().join('');\r\n// }\r\n// const result = reverse(str);\r\n// console.log(result);\r\n\r\n// const b = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10,11];\r\n\r\n// for (let i = 0; i < 10; i++) {\r\n//   setTimeout(() => console.log(b[i]), 1000);\r\n// }\r\n\r\n// for (var i = 0; i < 10; i++) {\r\n//   setTimeout(() => console.log(b[i]), 1000);\r\n// }\r\n\r\n// let x = 32;\r\n// let y = '32';\r\n// console.log((x==y));\r\n// console.log((x.toString()===y));\r\n\r\n// const person = {\r\n//     name:\"Sarthak\",\r\n//     greet : ()=>{\r\n//         console.log(this.name);\r\n//     }\r\n// };\r\n// person.greet();\r\n\r\n// const arr = [\"sarthak\",1,4,'askhdbsa',5,1,\"asbdh\"];\r\n// let sum = arr\r\n//     .filter(e => typeof e==='number')\r\n//     .reduce((prev,curr)=>{\r\n//         return prev+curr;\r\n//     },0)\r\n// console.log(sum);\r\n// const arr = [\"sarthak\",1,4,'askhdbsa',5,1,\"asbdh\"];\r\n// let sum =0;\r\n\r\n// arr.forEach((e) => {\r\n//     if(typeof e === 'number'){\r\n//         sum += e;\r\n//     }\r\n// })\r\n\r\n// console.log(sum);\r\n\r\n\r\n// DUPLICATES USING FLOYDS\r\n// const numbers = [9, 6, 4, 2, 3, 5, 7, 0, 1, 7];\r\n// function duplicates(a) {\r\n//     let slow = a[0];\r\n//     let fast = a[0];\r\n//     do {\r\n//         slow = a[slow];\r\n//         fast = a[a[fast]];\r\n//     } while (slow !== fast)\r\n//     slow = a[0];\r\n//     while (slow !== fast) {\r\n//         slow = a[slow];\r\n//         fast = a[fast];\r\n//     }\r\n//     return a[slow];\r\n// }\r\n// const result = duplicates(numbers);\r\n// console.log(result);\r\n\r\n\r\n// FINDING FREQ OF EACH CHARACTER\r\n// let string = \"abccbad\";\r\n// function occ(s){\r\n//     const freq = {};\r\n//     for(let e of s){\r\n//         freq[e] = freq[e] ? freq[e]+1 : 1;\r\n//     }\r\n//     return freq;\r\n// }   \r\n// let result = occ(string);\r\nconsole.log(result);    \r\n\r\n\r\n// let string = \"abcdedcba\";\r\n// function palindrome(s){\r\n//     let x = 0;\r\n//     let y = s.length-1;\r\n//     while(x<y){\r\n//         if(s[x++]!==s[y--]){\r\n//             return false;\r\n//         }\r\n//     }\r\n//     return true;\r\n// }\r\n// let result = palindrome(string);\r\n// console.log(result);\r\n\r\n// FLATTEN ARRAY\r\n// const nested = [1, [2, 3], [4, [5, 6]], 7];\r\n// console.log(nested.toString().split(',').map(Number))\r\n\r\n\r\n// FINDING FIRST DUPLICATE ELEMENT\r\n// let string = \"abccbad\";\r\n// function check(s){\r\n//     const freq = {};\r\n//     for(let e of s){\r\n//         freq[e] = freq[e]? freq[e]+1 : 1;\r\n//     }\r\n//     for(let e in freq){\r\n//         if(freq[e]==1){\r\n//             return e;\r\n//         }\r\n//     }\r\n//     return -1;\r\n// }\r\n// let result = check(string);\r\n// console.log(result); \r\n\r\n// FIRST CHARACTER TO UPPER CASE\r\nfunction titleCase(str) {\r\n    return str.split(' ').map(word=>word.charAt(0).toUpperCase()+word.slice(1).toLowerCase()).jon(' ')\r\n}\r\nconsole.log(titleCase(\"hello world javascript\"));\r\n\r\n\r\n// for (var i = 0; i < 3; i++) {\r\n//     (function(j){\r\n//         setTimeout(() => console.log(j), 100);\r\n//     })(i);\r\n// }\r\n",
+      "lines": 282,
+      "isText": true
+    },
+    {
+      "path": "test\\runTest.js",
+      "absolutePath": "c:\\Users\\sarth\\OneDrive\\Desktop\\private\\extension-test\\test\\runTest.js",
+      "name": "runTest.js",
+      "extension": ".js",
+      "size": 663,
+      "created": "2025-08-08T05:36:33.369Z",
+      "modified": "2025-07-24T14:11:27.557Z",
+      "content": "const path = require('path');\n\nconst { runTests } = require('@vscode/test-electron');\n\nasync function main() {\n\ttry {\n\t\t// The folder containing the Extension Manifest package.json\n\t\t// Passed to `--extensionDevelopmentPath`\n\t\tconst extensionDevelopmentPath = path.resolve(__dirname, '../');\n\n\t\t// The path to the extension test script\n\t\t// Passed to --extensionTestsPath\n\t\tconst extensionTestsPath = path.resolve(__dirname, './suite/index');\n\n\t\t// Download VS Code, unzip it and run the integration test\n\t\tawait runTests({ extensionDevelopmentPath, extensionTestsPath });\n\t} catch (err) {\n\t\tconsole.error('Failed to run tests');\n\t\tprocess.exit(1);\n\t}\n}\n\nmain();\n",
+      "lines": 24,
+      "isText": true
+    },
+    {
+      "path": "test\\suite\\extension.test.js",
+      "absolutePath": "c:\\Users\\sarth\\OneDrive\\Desktop\\private\\extension-test\\test\\suite\\extension.test.js",
+      "name": "extension.test.js",
+      "extension": ".js",
+      "size": 456,
+      "created": "2025-08-08T05:36:33.394Z",
+      "modified": "2025-07-24T14:11:27.559Z",
+      "content": "const assert = require('assert');\n\n// You can import and use all API from the 'vscode' module\n// as well as import your extension to test it\nconst vscode = require('vscode');\n// const myExtension = require('../extension');\n\nsuite('Extension Test Suite', () => {\n\tvscode.window.showInformationMessage('Start all tests.');\n\n\ttest('Sample test', () => {\n\t\tassert.strictEqual(-1, [1, 2, 3].indexOf(5));\n\t\tassert.strictEqual(-1, [1, 2, 3].indexOf(0));\n\t});\n});\n",
+      "lines": 16,
+      "isText": true
+    },
+    {
+      "path": "test\\suite\\index.js",
+      "absolutePath": "c:\\Users\\sarth\\OneDrive\\Desktop\\private\\extension-test\\test\\suite\\index.js",
+      "name": "index.js",
+      "extension": ".js",
+      "size": 759,
+      "created": "2025-08-08T05:36:33.404Z",
+      "modified": "2025-07-24T14:11:27.559Z",
+      "content": "const path = require('path');\nconst Mocha = require('mocha');\nconst glob = require('glob');\n\nfunction run() {\n\t// Create the mocha test\n\tconst mocha = new Mocha({\n\t\tui: 'tdd',\n\t\tcolor: true\n\t});\n\n\tconst testsRoot = path.resolve(__dirname, '..');\n\n\treturn new Promise((c, e) => {\n\t\tglob('**/**.test.js', { cwd: testsRoot }, (err, files) => {\n\t\t\tif (err) {\n\t\t\t\treturn e(err);\n\t\t\t}\n\n\t\t\t// Add files to the test suite\n\t\t\tfiles.forEach(f => mocha.addFile(path.resolve(testsRoot, f)));\n\n\t\t\ttry {\n\t\t\t\t// Run the mocha test\n\t\t\t\tmocha.run(failures => {\n\t\t\t\t\tif (failures > 0) {\n\t\t\t\t\t\te(new Error(`${failures} tests failed.`));\n\t\t\t\t\t} else {\n\t\t\t\t\t\tc();\n\t\t\t\t\t}\n\t\t\t\t});\n\t\t\t} catch (err) {\n\t\t\t\tconsole.error(err);\n\t\t\t\te(err);\n\t\t\t}\n\t\t});\n\t});\n}\n\nmodule.exports = {\n\trun\n};\n",
+      "lines": 43,
+      "isText": true
+    }
+  ],
+  "directories": [
+    {
+      "path": "python",
+      "absolutePath": "c:\\Users\\sarth\\OneDrive\\Desktop\\private\\extension-test\\python",
+      "name": "python"
+    },
+    {
+      "path": "test",
+      "absolutePath": "c:\\Users\\sarth\\OneDrive\\Desktop\\private\\extension-test\\test",
+      "name": "test"
+    },
+    {
+      "path": "test\\suite",
+      "absolutePath": "c:\\Users\\sarth\\OneDrive\\Desktop\\private\\extension-test\\test\\suite",
+      "name": "suite"
+    }
+  ],
+  "summary": {
+    "totalFiles": 16,
+    "totalDirectories": 3,
+    "totalSize": 34073,
+    "fileTypes": {
+      ".json": 3,
+      "no-extension": 3,
+      ".js": 6,
+      ".html": 1,
+      ".py": 2,
+      ".txt": 1
+    }
+  }
+}
